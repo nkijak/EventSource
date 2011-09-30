@@ -11,21 +11,23 @@ import java.nio.channels.SocketChannel;
 
 import android.util.Log;
 
-public abstract class EventSource
+public class EventSource
 {
     private static final int EVENTSOURCE_PORT = 3000;
     private Selector selector; 
     private boolean alive = true;
     private boolean headerSent;
     private Thread thread;
+    private EventSourceListener listener;
     
-    public EventSource(String host_) throws IOException{
+    public EventSource(String host_, EventSourceListener listener_) throws IOException{
         selector = Selector.open();
         SocketChannel socketChannel = SocketChannel.open();
         socketChannel.configureBlocking(false);
         
         socketChannel.connect(new InetSocketAddress(host_, EVENTSOURCE_PORT));
         SelectionKey selectionKey = socketChannel.register(selector, socketChannel.validOps());
+        listener = listener_;
         start();
     }
     
@@ -66,7 +68,7 @@ public abstract class EventSource
                             {
                                 
                                 if (channel.finishConnect()) {
-                                    onStart();
+                                    listener.onStart();
                                 } else {
                                     Log.e("EventSource", "Error connecting to server");
                                     key.cancel();
@@ -98,7 +100,7 @@ public abstract class EventSource
                                 buffer.get(dump);
                                 String value = new String(dump);
                                 Log.d("EventSource:run@message", "VALUE ["+value+"]");
-                                onMessage(value);
+                                listener.onMessage(value);
                             } catch (IOException e)
                             {
                                 Log.e("EventSoure:run", "Error reading from channel", e);
@@ -128,10 +130,10 @@ public abstract class EventSource
         }).start();
     }
     
-    
-    abstract public void onMessage(String message);
-    abstract public void onStart();
-    abstract public void onClose();
-    
+    public interface EventSourceListener {
+        abstract public void onMessage(String message);
+        abstract public void onStart();
+        abstract public void onClose();
+    }
     
 }
